@@ -10,6 +10,7 @@ $output_directory = __DIR__ . '/output/';
 // Custom Settings
 $custom_settings = array(
     'capitalize_names' => false, // Capitalize some property names, defined in $words_to_capitalize
+    'case_transformation' => 'uppercase', // Options: 'no_change', 'uppercase', 'lowercase', 'ucfirst', 'ucwords'
     'remove_end_punctuation' => false, // Remove line-ending punctuation
     'fix_mid_line_punctuation' => false, // Fix mid-line punctuation
     'straighten_curly_quotes' => false, // Straighten curly quotes
