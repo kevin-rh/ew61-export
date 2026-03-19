@@ -131,7 +131,72 @@ function process_ew_lyrics_line($text_line)
 
     return trim($text_line); // Seeing a recurring theme here?
 }
+/**
+ * Remove combining diacritical marks from a string while preserving base characters
+ * Used to extract base letters (a-z) from accented characters (ǎ, ǔ, etc.)
+ *
+ * @param string $string The input string with diacritical marks
+ * @return string String with diacritical marks removed
+ */
+function remove_diacritics($string) {
+    // Normalize to NFD (decomposed form)
+    $string = normalizer_normalize($string, Normalizer::NFD);
+    // Remove combining diacritical marks
+    $string = preg_replace('/\p{Mn}/u', '', $string);
+    return $string;
+}
 
+/**
+ * Capitalize strings while preserving diacritical marks
+ * Handles accented characters in Chinese pinyin and other languages
+ *
+ * @param string $string The input string (e.g., "Wǒ SHǔYú Nǐ")
+ * @param string $case_mode Case transformation mode:
+ *   - 'uppercase': ALL CAPS (Wǒ SHǔYú Nǐ -> WǑ SHǓYÚ NǏ)
+ *   - 'lowercase': all lowercase (Wǒ SHǔYú Nǐ -> wǒ shǔyú nǐ)
+ *   - 'ucfirst': First letter uppercase (Wǒ SHǔYú Nǐ -> Wǒ shǔyú nǐ)
+ *   - 'ucwords': First letter of each word uppercase (Wǒ SHǔYú Nǐ -> Wǒ Shǔyú Nǐ)
+ *   - 'no_change': No transformation applied
+ * @return string Transformed string
+ */
+function capitalize_string_with_diacritics($string, $case_mode = 'no_change') {
+    if (empty($string) || $case_mode === 'no_change') {
+        return $string;
+    }
+
+    switch (strtolower($case_mode)) {
+        case 'uppercase':
+        case 'all_caps':
+            return mb_strtoupper($string, 'UTF-8');
+        
+        case 'lowercase':
+        case 'all_small':
+            return mb_strtolower($string, 'UTF-8');
+        
+        case 'ucfirst':
+        case 'first_letter_caps':
+            if (empty($string)) {
+                return $string;
+            }
+            $first_char = mb_substr($string, 0, 1, 'UTF-8');
+            $rest = mb_substr($string, 1, null, 'UTF-8');
+            return mb_strtoupper($first_char, 'UTF-8') . mb_strtolower($rest, 'UTF-8');
+        
+        case 'ucwords':
+        case 'first_word_caps':
+            // Capitalize first letter of each word, preserving diacritics
+            return preg_replace_callback(
+                '/\b([a-zāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ])/u',
+                function($matches) {
+                    return mb_strtoupper($matches[1], 'UTF-8');
+                },
+                mb_strtolower($string, 'UTF-8')
+            );
+        
+        default:
+            return $string;
+    }
+}
 /**
  * Formatting functions according to custom settings array in config
  *
@@ -142,7 +207,11 @@ function process_ew_lyrics_line_custom($text_line)
 {
     global $custom_settings;
     global $words_to_capitalize;
-
+    
+    // Apply case transformation for pinyin and romanized text
+    if ($custom_settings['case_transformation']) {
+        $text_line = capitalize_string_with_diacritics($text_line, $custom_settings['case_transformation']);
+    }
     // Capitalize some property names
     if ($custom_settings['capitalize_names']) {
         foreach ($words_to_capitalize as $word) {
