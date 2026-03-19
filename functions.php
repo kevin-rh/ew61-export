@@ -10,6 +10,9 @@
  * @link       https://github.com/jamesinglis/ew61-export
  */
 
+if (!extension_loaded('mbstring')) {
+    die('ERROR: PHP mbstring extension is required but not enabled.');
+}
 
 // Set the file encoding for everything to UTF-8
 mb_detect_order(array('UTF-8', 'ISO-8859-1', 'ASCII'));
@@ -677,8 +680,16 @@ function rtf2text($text)
                         // We need to check whether the stack contains \ucN control word. If it does,
                         // we should remove the N characters from the output stream.
                         case "u":
-                            $toText .= html_entity_decode("&#x" . dechex($param) . ";");
+                            // Handle CJK Unicode properly
+                            $codepoint = $param;
+                            if ($codepoint < 0) {
+                                $codepoint = 65536 + $codepoint;
+                            }
+                            $toText .= html_entity_decode("&#x" . dechex($codepoint) . ";");
                             $ucDelta = @$stack[$j]["uc"];
+                            if (!isset($stack[$j]["uc"]) || $ucDelta < 1)
+                                $ucDelta = 1; // Default: skip 1 character
+                                
                             if ($ucDelta > 0)
                                 $i += $ucDelta;
                             break;
